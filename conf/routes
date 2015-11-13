@@ -1,0 +1,7 @@
+GET     /primes/:n          uk.co.rbs.restprimes.rest.Application.primes(n: Int, algorithm: String ?= "sequential")
+
+GET     /api-docs           @pl.matisoft.swagger.ApiHelpController.getResources
+GET     /api-docs/primes    @pl.matisoft.swagger.ApiHelpController.getResource(path = "/primes")
+
+# Map static resources from the /public folder to the /assets URL path
+GET     /docs/*file         controllers.Assets.versioned(path="/public/swagger-ui", file: Asset)
