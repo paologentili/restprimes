@@ -36,15 +36,15 @@ The following instructions ask you to use a command line tool called `./activato
 The first time 'activator' is executed the it'll download all the Play framework and app dependencies so it will take few minutes!
 
 From the project folder:
-1) `./activator test` to run unit and integration tests
-2) `./activator run` to run in dev mode
-3) `./activator start` to run in prod mode
-2) `./activator start -J-Xmx4096m -J-server` to run in prod mode with increased heap space
+- `./activator test` to run unit and integration tests
+- `./activator run` to run in dev mode
+- `./activator start` to run in prod mode
+- `./activator start -J-Xmx4096m -J-server` to run in prod mode with increased heap space
 
 ## Swagger Api Documentation
 - Swagger console available at http://localhost:9000/docs/index.html
-- it contains documentation on the REST api like parameters, conten-types etc. and it allow to call the api 
+- It contains documentation on the REST api like parameters, conten-types etc. and it allow to call the api
 
 ## Code Coverage
 - run `./activator jacoco:cover` form the project folder
-- the html report will be at ./target/scala-2.11/jacoco/html/index.html
+- The html report will be at ./target/scala-2.11/jacoco/html/index.html
