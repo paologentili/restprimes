@@ -37,12 +37,12 @@ The first time 'activator' is executed the it'll download all the Play framework
 
 From the project folder:
 - `./activator test` to run unit and integration tests
-- `./activator run` to run in dev mode
-- `./activator start` to run in prod mode
+- `./activator run` to run in dev mode (app will be available at http://localhost:9000)
+- `./activator start` to run in prod mode (app will be available at http://localhost:9000)
 - `./activator start -J-Xmx4096m -J-server` to run in prod mode with increased heap space
 
 ## Swagger Api Documentation
-- Swagger console available at http://localhost:9000/docs/index.html
+- Swagger console available at http://§localhost:9000/docs/index.html
 - It contains documentation on the REST api like parameters, conten-types etc. and it allow to call the api
 
 ## Code Coverage
