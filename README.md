@@ -2,7 +2,7 @@
 
 ## Outline
 A RESTful service that calculates and returns all the prime numbers up to an including a number provided.
-It uses Akka and the Actor model to implement a parallel version on the Segmented Sieve of Erathostenes https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes#Segmented_sieve.
+It uses Akka and the Actor model to implement a parallel version on the Segmented Sieve of Eratostenes https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes#Segmented_sieve.
 It also has and endpoint that streams prime numbers using chunked http response when the input number is very big, in order to avoid out of memory errors
 
 ### Example
