@@ -38,7 +38,7 @@ The first time 'activator' is executed the it'll download all the Play framework
 
 ### Few interesting links i found about parallelisation of prime number geerators:
 - [Sieve of Erathostenes](https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes)
-- [Generating Primes](https://en.wikipedia.org/wiki/Generating_primes
+- [Generating Primes](https://en.wikipedia.org/wiki/Generating_primes)
 - https://www.quora.com/What-is-the-segmented-sieve-of-Eratosthenes
 - http://stackoverflow.com/questions/9307180/parallelizing-sieve-of-eratosthenes-algorithm-for-finding-prime-number
 - http://primesieve.org/segmented_sieve.html
@@ -49,4 +49,4 @@ The first time 'activator' is executed the it'll download all the Play framework
 - http://compoasso.free.fr/primelistweb/page/prime/eratosthene_en.php
 - http://cs-alb-pc3.massey.ac.nz/notes/59735/seminars/01077635.pdf
 - http://stackoverflow.com/questions/4700107/how-do-i-implement-the-sieve-of-eratosthenes-using-multithreaded-c
-- 
+
