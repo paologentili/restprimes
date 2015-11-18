@@ -50,8 +50,4 @@ The first time 'activator' is executed the it'll download all the Play framework
 - http://cs-alb-pc3.massey.ac.nz/notes/59735/seminars/01077635.pdf
 - http://stackoverflow.com/questions/4700107/how-do-i-implement-the-sieve-of-eratosthenes-using-multithreaded-c
 
-```sequence
-Alice->Bob: Hello Bob, how are you?
-Note right of Bob: Bob thinks
-Bob-->Alice: I am good thanks!
-```
+
