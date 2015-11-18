@@ -9,7 +9,7 @@ It also has and endpoint that streams prime numbers using chunked http response 
 The REST call should look like http://localhost:9000/primes/10 and should return JSON content:
 ```
 {
-  "initialb": 10
+  "initial": 10
   "primes": [2,3,5,7]
 }
 ```
