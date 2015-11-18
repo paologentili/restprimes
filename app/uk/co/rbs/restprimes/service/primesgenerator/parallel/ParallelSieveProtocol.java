@@ -1,5 +1,7 @@
 package uk.co.rbs.restprimes.service.primesgenerator.parallel;
 
+import play.mvc.Results.Chunks.Out;
+
 import java.util.BitSet;
 
 public class ParallelSieveProtocol {
@@ -32,6 +34,13 @@ public class ParallelSieveProtocol {
         public Integer prime;
         public PrimeMultiplesMarkedOff(Integer prime) {
             this.prime = prime;
+        }
+    }
+
+    public static class StreamPrimes {
+        public Out<String> chunks;
+        public StreamPrimes(Out<String> chunks) {
+            this.chunks = chunks;
         }
     }
 

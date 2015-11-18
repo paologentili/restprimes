@@ -5,6 +5,7 @@ import com.thoughtworks.xstream.XStream;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import play.Logger;
 import play.libs.ws.WS;
 import play.libs.ws.WSResponse;
 import play.mvc.Http;
@@ -213,6 +214,25 @@ public class IntegrationTest {
 
         assertThat(wsResponse.getStatus(), equalTo(OK));
         assertThat(om.readValue(wsResponse.getBody(), Map.class).get("resourcePath"), equalTo("/primes"));
+    }
+
+
+
+
+
+
+
+
+    @Test
+    public void test1() throws Exception {
+
+        final WSResponse wsResponse = WS.url(URL_API + "/primes/stream/30")
+                .get()
+                .get(RESPONSE_WAIT_TIMEOUT);
+
+        Thread.sleep(5000);
+
+        Logger.info(wsResponse.getBody());
     }
 
 }

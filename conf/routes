@@ -1,3 +1,4 @@
+GET     /primes/stream/:n   uk.co.rbs.restprimes.rest.Application.primesStream(n: Int)
 GET     /primes/:n          uk.co.rbs.restprimes.rest.Application.primes(n: Int, algorithm: String ?= "sequential")
 
 GET     /api-docs           @pl.matisoft.swagger.ApiHelpController.getResources

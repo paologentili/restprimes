@@ -8,9 +8,13 @@ import akka.routing.BroadcastRoutingLogic;
 import akka.routing.Routee;
 import akka.routing.Router;
 import play.Logger;
+import play.mvc.Results.Chunks.Out;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveProtocol.*;
 
-import java.util.*;
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
@@ -30,6 +34,7 @@ public class ParallelSieveMasterActor extends UntypedActor {
     private BitSet primes;
 
     private ActorRef webClient;
+    private Out<String> chunks;
 
     private Router broadcastWorkers;
 
@@ -77,18 +82,19 @@ public class ParallelSieveMasterActor extends UntypedActor {
     @Override
     public void onReceive(Object message) throws Exception {
 
+        if (message instanceof StreamPrimes) {
+
+            LOGGER.debug("received message: StreamPrimes");
+            this.chunks = ((StreamPrimes) message).chunks;
+            findPrimes();
+        }
+
         if (message instanceof GeneratePrimes) {
 
             LOGGER.debug("received message: GeneratePrimes");
-
             // storing the reference of the initial caller to terminate the web request
             this.webClient = sender();
-
-            // find all primes up to sqrt(n)
-            findAndBroadcastSievingPrimes();
-
-            // from now on as soon as the map of pending eliminations is emptied, i can terminate
-            this.noMorePrimes = true;
+            findPrimes();
 
         }
 
@@ -112,6 +118,14 @@ public class ParallelSieveMasterActor extends UntypedActor {
             mergeSegmentResultsAndTerminate((SegmentResults) message);
         }
 
+    }
+
+    private void findPrimes() {
+        // find all primes up to sqrt(n)
+        findAndBroadcastSievingPrimes();
+
+        // from now on as soon as the map of pending eliminations is emptied, i can terminate
+        this.noMorePrimes = true;
     }
 
     private void findAndBroadcastSievingPrimes() {
@@ -143,14 +157,9 @@ public class ParallelSieveMasterActor extends UntypedActor {
         int end = results.end;
         int segmentSize = end - start + 1;
 
-//        LOGGER.debug("merging " + primeNumbersFrom(primes, segmentSize) + " with" + primeNumbersFrom(primesFromSegment, segmentSize).stream().map(i -> i + start).collect(toList()));
-
         for (int i = 0; i < segmentSize; i++) {
-//            LOGGER.debug("setting " + (start+i) + "th bit to " + primesFromSegment.get(i));
             primes.set(start+i, primesFromSegment.get(i));
         }
-
-//        LOGGER.debug("merged result: " + primeNumbersFrom(primes, segmentSize));
 
         this.remainingWorkersBeforeCompletion--;
 
@@ -161,8 +170,30 @@ public class ParallelSieveMasterActor extends UntypedActor {
     }
 
     private void terminate() {
+
         if (this.webClient != null) {
             this.webClient.tell(primes, self());
+
+        } else {
+
+            chunks.write("{ \"initial\": "+n+", \"primes\": { \n");
+
+            chunks.write("[\n");
+
+            for(int i = 0; i < n; i++) {
+                if (!primes.get(i)) {
+                    chunks.write(String.valueOf(i));
+                    if (i<n-1) chunks.write(", \n");
+                }
+            }
+
+            chunks.write("]\n");
+
+            chunks.write("}\n");
+
+            chunks.close();
+
+            LOGGER.info("closed stream");
         }
     }
 
