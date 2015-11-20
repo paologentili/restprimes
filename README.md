@@ -33,7 +33,7 @@ The first time 'activator' is executed the it'll download all the Play framework
 
 ## Code Coverage
 - run `./activator jacoco:cover` form the project folder
-- The html report will be at ./target/scala-2.11/jacoco/html/index.html
+- The html report will be at `./target/scala-2.11/jacoco/html/index.html`
 
 ### Few interesting links i found about parallelisation of prime number geerators:
 - [Sieve of Erathostenes](https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes)
