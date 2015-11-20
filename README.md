@@ -22,15 +22,14 @@ The REST call should look like http://localhost:9000/primes/10 and should return
 The service is implemented in Java8 with [Play! Framework](http://www.playframework.com).
 Uses [Akka](http://www.akka.io) and Actor model to implement a parallel algorithm based on the [Segmented Sieve of Erathostenes](https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes#Segmented_sieve)
 
-## Important Note!!!
-The following instructions ask you to use a command line tool called `./activator`.
-The first time 'activator' is executed the it'll download all the Play framework and app dependencies so it will take few minutes!
-
 ### How to
 - `./activator test` to run unit and integration tests
 - `./activator run` to run in dev mode (app will be available at http://localhost:9000)
 - `./activator start` to run in prod mode (app will be available at http://localhost:9000)
 - `./activator start -J-Xmx4096m -J-server` to run in prod mode with increased heap space
+
+#### Important Note!!!
+The first time 'activator' is executed the it'll download all the Play framework and app dependencies so it will take few minutes!
 
 ## Code Coverage
 - run `./activator jacoco:cover` form the project folder
