@@ -61,7 +61,7 @@ public class Application extends Controller {
             Akka.system()
                 .actorOf(ParallelSieveMasterActor.props(n, 8))
                 .tell(new StreamPrimes(out), null);
-        }));
+        })).as("application/json");
     }
 
 }

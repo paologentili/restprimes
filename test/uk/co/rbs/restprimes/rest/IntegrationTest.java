@@ -87,7 +87,6 @@ public class IntegrationTest {
 
     }
 
-    // TODO refactor these test into a parametrised test where the parameter is the algorithm name
     @Test
     public void indexEndpointShouldReturnPrimeNumbersInJsonForParallelAlgorithm() throws Exception {
 
@@ -100,6 +99,18 @@ public class IntegrationTest {
         assertThat(wsResponse.getHeader(Http.HeaderNames.CONTENT_TYPE), containsString("application/json"));
         assertThat(wsResponse.getBody(), equalTo(primesResponseFor30));
 
+    }
+
+    @Test
+    public void testStreaming() throws Exception {
+
+        final WSResponse wsResponse = WS.url(URL_API + "/primes/stream/30")
+                .get()
+                .get(RESPONSE_WAIT_TIMEOUT);
+
+        assertThat(wsResponse.getStatus(), equalTo(OK));
+        assertThat(wsResponse.getHeader(Http.HeaderNames.CONTENT_TYPE), containsString("application/json"));
+        assertThat(wsResponse.getBody(), equalTo(primesResponseFor30));
     }
 
     @Test
@@ -214,25 +225,6 @@ public class IntegrationTest {
 
         assertThat(wsResponse.getStatus(), equalTo(OK));
         assertThat(om.readValue(wsResponse.getBody(), Map.class).get("resourcePath"), equalTo("/primes"));
-    }
-
-
-
-
-
-
-
-
-    @Test
-    public void test1() throws Exception {
-
-        final WSResponse wsResponse = WS.url(URL_API + "/primes/stream/30")
-                .get()
-                .get(RESPONSE_WAIT_TIMEOUT);
-
-        Thread.sleep(5000);
-
-        Logger.info(wsResponse.getBody());
     }
 
 }

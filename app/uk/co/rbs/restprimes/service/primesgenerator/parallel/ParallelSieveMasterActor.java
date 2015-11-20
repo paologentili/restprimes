@@ -176,20 +176,29 @@ public class ParallelSieveMasterActor extends UntypedActor {
 
         } else {
 
-            chunks.write("{ \"initial\": "+n+", \"primes\": { \n");
+            // TODO ugly. Use jackson as in http://stackoverflow.com/questions/29802060/java-play-framework-2-3-return-streamed-json-using-jackson and provide solution to stream xml as well
 
-            chunks.write("[\n");
+            chunks.write("{\"initial\":"+n+",\"primes\":[");
 
-            for(int i = 0; i < n; i++) {
+            boolean isFirst = true;
+
+            for (int i = 0; i < n; i++) {
+
                 if (!primes.get(i)) {
+
+                    if (!isFirst) {
+                        chunks.write(",");
+                    }
+
                     chunks.write(String.valueOf(i));
-                    if (i<n-1) chunks.write(", \n");
+
+                    isFirst = false;
                 }
             }
 
-            chunks.write("]\n");
+            chunks.write("]");
 
-            chunks.write("}\n");
+            chunks.write("}");
 
             chunks.close();
 
