@@ -1,4 +1,4 @@
-package uk.co.rbs.restprimes.service.primesgenerator.parallel;
+package uk.co.rbs.restprimes.service.primesgenerator.parallel.actor;
 
 import akka.actor.ActorSystem;
 import akka.actor.Props;
