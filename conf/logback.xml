@@ -14,8 +14,8 @@
   -->
   <logger name="play" level="INFO" />
   <logger name="application" level="DEBUG" />
-  <logger name="masterActor" level="INFO" />
-  <logger name="workerActor" level="INFO" />
+  <logger name="master-actor" level="DEBUG" />
+  <logger name="worker-actor" level="INFO" />
 
   <root level="ERROR">
     <appender-ref ref="STDOUT" />

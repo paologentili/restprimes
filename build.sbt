@@ -27,3 +27,5 @@ jacoco.excludes in jacoco.Config := Seq("views*", "*Routes*", "controllers*route
   "*javascript*", "*ref*", "*routes")
 
 parallelExecution in jacoco.Config := false
+
+javaOptions in Test += "-Dlogger.file=conf/logback.xml"

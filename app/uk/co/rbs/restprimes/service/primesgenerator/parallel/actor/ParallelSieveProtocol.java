@@ -16,6 +16,14 @@ public class ParallelSieveProtocol {
             this.n = n;
             this.numberOfWorkers = numberOfWorkers;
         }
+
+        @Override
+        public String toString() {
+            return "GeneratePrimes{" +
+                    "n=" + n +
+                    ", numberOfWorkers=" + numberOfWorkers +
+                    '}';
+        }
     }
 
     public static class SendResults {
@@ -30,6 +38,14 @@ public class ParallelSieveProtocol {
             this.end = end;
             this.result = result;
         }
+
+        @Override
+        public String toString() {
+            return "SegmentResults{" +
+                    "start=" + start +
+                    ", end=" + end +
+                    '}';
+        }
     }
 
     public static class SievingPrimeFound {
@@ -37,12 +53,26 @@ public class ParallelSieveProtocol {
         public SievingPrimeFound(Integer prime) {
             this.prime = prime;
         }
+
+        @Override
+        public String toString() {
+            return "SievingPrimeFound{" +
+                    "prime=" + prime +
+                    '}';
+        }
     }
 
     public static class PrimeMultiplesMarkedOff {
         public Integer prime;
         public PrimeMultiplesMarkedOff(Integer prime) {
             this.prime = prime;
+        }
+
+        @Override
+        public String toString() {
+            return "PrimeMultiplesMarkedOff{" +
+                    "prime=" + prime +
+                    '}';
         }
     }
 
@@ -54,6 +84,14 @@ public class ParallelSieveProtocol {
             this.n = n;
             this.numberOfWorkers = numberOfWorkers;
             this.chunks = chunks;
+        }
+
+        @Override
+        public String toString() {
+            return "StreamPrimes{" +
+                    "n=" + n +
+                    ", numberOfWorkers=" + numberOfWorkers +
+                    '}';
         }
     }
 

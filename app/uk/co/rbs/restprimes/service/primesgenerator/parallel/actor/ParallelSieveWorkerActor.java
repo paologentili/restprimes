@@ -1,39 +1,35 @@
 package uk.co.rbs.restprimes.service.primesgenerator.parallel.actor;
 
-import akka.actor.Props;
 import akka.actor.UntypedActor;
+import com.google.inject.assistedinject.Assisted;
 import play.Logger;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.PrimeMultiplesMarkedOff;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.SegmentResults;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.SendResults;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.SievingPrimeFound;
 
+import javax.inject.Inject;
 import java.util.BitSet;
 
 import static java.util.stream.Collectors.toList;
 import static uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.WORKER_ACTOR;
 import static uk.co.rbs.restprimes.utils.RestPrimeUtils.primeNumbersFrom;
 
-/**
- * Worker Actor that find prime numbers between the start and the end number.
- * This is to implement the segmented Sieve of Eratosthenes
- * https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes#Segmented_sieve
- */
 public class ParallelSieveWorkerActor extends UntypedActor {
 
-    public static final Logger.ALogger LOGGER = Logger.of(WORKER_ACTOR);
+    private static final Logger.ALogger LOGGER = Logger.of(WORKER_ACTOR);
 
-    private int start;
-    private int end;
-    private BitSet primes;
+    private final Integer segmentStart;
+    private final Integer segmentEnd;
 
-    public static Props props(Integer start, Integer end) {
-        return Props.create(ParallelSieveWorkerActor.class, start, end);
-    }
+    private final BitSet primes;
 
-    private ParallelSieveWorkerActor(int start, int end) {
-        this.start = start;
-        this.end = end;
+    @Inject
+    public ParallelSieveWorkerActor(@Assisted("segmentStart") Integer segmentStart, @Assisted("segmentEnd") Integer segmentEnd) {
+
+        this.segmentStart = segmentStart;
+        this.segmentEnd = segmentEnd;
+
         this.primes = new BitSet();
     }
 
@@ -41,6 +37,7 @@ public class ParallelSieveWorkerActor extends UntypedActor {
     public void onReceive(Object message) throws Exception {
 
         if (message instanceof SievingPrimeFound) {
+            log(message);
 
             SievingPrimeFound primeNumberFound = (SievingPrimeFound) message;
 
@@ -50,8 +47,11 @@ public class ParallelSieveWorkerActor extends UntypedActor {
         }
 
         if (message instanceof SendResults) {
-            LOGGER.trace("sending results of ("+start+", "+end+"): " + primeNumbersFrom(primes, end-start).stream().map(i -> i + start).collect(toList()));
-            sender().tell(new SegmentResults(start, end, primes), self());
+            log(message);
+
+            LOGGER.trace("sending results of ("+segmentStart+", "+segmentEnd+"): " + primeNumbersFrom(primes, segmentEnd-segmentStart).stream().map(i -> i + segmentStart).collect(toList()));
+
+            sender().tell(new SegmentResults(segmentStart, segmentEnd, primes), self());
         }
     }
 
@@ -59,16 +59,19 @@ public class ParallelSieveWorkerActor extends UntypedActor {
 
         Integer firstMultipleOfPrime;
 
-        if (start % prime == 0) {
-            firstMultipleOfPrime = start;
+        if (segmentStart % prime == 0) {
+            firstMultipleOfPrime = segmentStart;
         } else {
-            firstMultipleOfPrime = start + (prime - (start % prime));
+            firstMultipleOfPrime = segmentStart + (prime - (segmentStart % prime));
         }
 
-        for (int i=firstMultipleOfPrime; i<=end; i+=prime) {
-            LOGGER.trace("("+start+", "+end+") - eliminating " + i + " at pos " + (i - start) + " for prime " + prime);
-            primes.set(i - start);
+        for (int i=firstMultipleOfPrime; i<=segmentEnd; i+=prime) {
+            LOGGER.trace("("+segmentStart+", "+segmentEnd+") - eliminating " + i + " at pos " + (i - segmentStart) + " for prime " + prime);
+            primes.set(i - segmentStart);
         }
     }
 
+    private void log(Object message) {
+        LOGGER.debug(Thread.currentThread().getName() + ": received message " + message);
+    }
 }

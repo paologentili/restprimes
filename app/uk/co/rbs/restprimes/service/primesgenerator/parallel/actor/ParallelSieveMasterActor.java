@@ -7,10 +7,11 @@ import akka.routing.BroadcastRoutingLogic;
 import akka.routing.Routee;
 import akka.routing.Router;
 import play.Logger;
-import play.libs.akka.InjectedActorSupport;
 import play.mvc.Results.Chunks.Out;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveGuiceModule.WorkerActorFactory;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.*;
 
+import javax.inject.Inject;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
@@ -20,9 +21,12 @@ import java.util.stream.IntStream;
 import static java.util.stream.Collectors.toList;
 import static uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.*;
 
-public class ParallelSieveMasterActor extends UntypedActor implements InjectedActorSupport {
+public class ParallelSieveMasterActor extends UntypedActor implements InjectedUnnamedActorSupport {
 
     private static final Logger.ALogger LOGGER = Logger.of(MASTER_ACTOR);
+
+    @Inject
+    private WorkerActorFactory workerActorFactory;
 
     private int n;
     private int sqrt;
@@ -30,7 +34,6 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedAc
 
     private boolean noMorePrimes;
     private Map<Integer, Integer> pendingEliminations;
-    private int segmentSize;
 
     private BitSet primes;
 
@@ -41,49 +44,28 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedAc
 
     private int remainingWorkersBeforeCompletion;
 
-    private void init(Integer n, Integer numberOfWorkers) {
-
-        this.n = n;
-
-        this.numberOfWorkers = numberOfWorkers;
-
-        this.remainingWorkersBeforeCompletion = this.numberOfWorkers;
-
-        this.noMorePrimes = false;
-        this.pendingEliminations = new HashMap<>();
-
-        this.sqrt = (int) Math.sqrt(this.n) + 1;
-
-        this.segmentSize = (n - sqrt) / numberOfWorkers;
-
-        this.primes = new BitSet(sqrt);
-        this.primes.set(0);
-        this.primes.set(1);
-
-        this.broadcastWorkers = createWorkersRouter(sqrt, n, segmentSize, numberOfWorkers);
-
-        LOGGER.debug("created: " + this);
-
-    }
-
-    private Router createWorkersRouter(int sqrt, int n, int segmentSize, int numberOfWorkers) {
+    private Router createWorkersRouter(int sqrt, int n, int numberOfWorkers) {
 
         List<Routee> workers = IntStream
                 .rangeClosed(1, numberOfWorkers)
-                .mapToObj(i -> getActorRefRoutee(i, sqrt, n, segmentSize, numberOfWorkers))
+                .mapToObj(i -> getActorRefRoutee(i, sqrt, n, numberOfWorkers))
                 .collect(toList());
 
         return new Router(new BroadcastRoutingLogic(), workers);
     }
 
-    private ActorRefRoutee getActorRefRoutee(int i, int sqrt, int n, int segmentSize, int numberOfWorkers) {
+    private ActorRefRoutee getActorRefRoutee(int i, int sqrt, int n, int numberOfWorkers) {
+
+        int segmentSize = (n - sqrt) / numberOfWorkers;
 
         int segmentStart = sqrt + ((i-1) * segmentSize) + 1;
+
         int segmentEnd = i == numberOfWorkers ? n : segmentStart + segmentSize - 1;
 
-        LOGGER.debug(i + ": creating worker for ("+segmentStart+", "+segmentEnd+")");
+        ActorRef workerActor = injectedUnnamedChild(() -> workerActorFactory.create(segmentStart, segmentEnd));
 
-        ActorRef workerActor = getContext().actorOf(ParallelSieveWorkerActor.props(segmentStart, segmentEnd));
+        LOGGER.debug(getSelf().path().uid() + ": Created worker for segment ["+segmentStart+", "+segmentEnd+"] " + workerActor.path().uid());
+
         getContext().watch(workerActor);
 
         return new ActorRefRoutee(workerActor);
@@ -92,10 +74,10 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedAc
     @Override
     public String toString() {
         return "ParallelSieveMasterActor{" +
+                "uid= " + getSelf().path().uid() +
                 "n=" + n +
                 ", sqrt=" + sqrt +
                 ", numberOfWorkers=" + numberOfWorkers +
-                ", segmentSize=" + segmentSize +
                 '}';
     }
 
@@ -104,7 +86,7 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedAc
 
         if (message instanceof StreamPrimes) {
 
-            LOGGER.debug("received message: StreamPrimes");
+            log(message);
 
             final StreamPrimes streamPrimes = (StreamPrimes) message;
             this.chunks = streamPrimes.chunks;
@@ -114,7 +96,7 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedAc
 
         if (message instanceof GeneratePrimes) {
 
-            LOGGER.debug("received message: GeneratePrimes");
+            log(message);
 
             // storing the reference of the initial caller to terminate the web request
             this.webClient = sender();
@@ -126,6 +108,7 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedAc
         }
 
         if (message instanceof PrimeMultiplesMarkedOff) {
+            log(message);
 
             Integer prime = ((PrimeMultiplesMarkedOff) message).prime;
 
@@ -141,6 +124,7 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedAc
         }
 
         if (message instanceof SegmentResults) {
+            log(message);
 
             mergeSegmentResultsAndTerminate((SegmentResults) message);
         }
@@ -158,17 +142,38 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedAc
         this.noMorePrimes = true;
     }
 
+    private void init(Integer n, Integer numberOfWorkers) {
+
+        this.n = n;
+
+        this.numberOfWorkers = numberOfWorkers;
+
+        this.remainingWorkersBeforeCompletion = this.numberOfWorkers;
+
+        this.noMorePrimes = false;
+        this.pendingEliminations = new HashMap<>();
+
+        this.sqrt = (int) Math.sqrt(this.n) + 1;
+
+        this.primes = new BitSet(sqrt);
+        this.primes.set(0);
+        this.primes.set(1);
+
+        this.broadcastWorkers = createWorkersRouter(sqrt, n, numberOfWorkers);
+
+    }
+
     private void findAndBroadcastSievingPrimes() {
 
         for (int i = 2; i <= sqrt; i++) {
 
             if (!primes.get(i)) {
 
-                LOGGER.debug("found a sieving prime: " + i);
+                LOGGER.debug(getSelf().path().uid() + ": Found a sieving prime: " + i);
 
                 pendingEliminations.put(i, numberOfWorkers);
 
-                broadcastWorkers.route(new ParallelSieveProtocol.SievingPrimeFound(i), self());
+                broadcastWorkers.route(new SievingPrimeFound(i), self());
 
                 int multipleIndex = i + i;
 
@@ -183,12 +188,12 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedAc
     private void mergeSegmentResultsAndTerminate(SegmentResults results) {
 
         BitSet primesFromSegment = results.result;
-        int start = results.start;
-        int end = results.end;
-        int segmentSize = end - start + 1;
+        int segmentStart = results.start;
+        int segmentEnd = results.end;
+        int segmentSize = segmentEnd - segmentStart + 1;
 
         for (int i = 0; i < segmentSize; i++) {
-            primes.set(start+i, primesFromSegment.get(i));
+            this.primes.set(segmentStart+i, primesFromSegment.get(i));
         }
 
         this.remainingWorkersBeforeCompletion--;
@@ -200,6 +205,8 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedAc
     }
 
     private void terminate() {
+
+        LOGGER.info(getSelf().path().uid() + ": Computation terminated, sending results to (webClient="+webClient+", chunks="+chunks+")");
 
         if (this.webClient != null) {
             this.webClient.tell(primes, self());
@@ -232,8 +239,12 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedAc
 
             chunks.close();
 
-            LOGGER.info("closed stream");
+            LOGGER.info(getSelf().path().uid() + ": Closed stream");
         }
+    }
+
+    private void log(Object message) {
+        LOGGER.debug(getSelf().path().uid() + ": Received message " + message);
     }
 
 }

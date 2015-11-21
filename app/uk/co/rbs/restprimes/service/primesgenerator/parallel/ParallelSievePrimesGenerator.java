@@ -1,24 +1,32 @@
 package uk.co.rbs.restprimes.service.primesgenerator.parallel;
 
+import akka.actor.Actor;
 import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+import akka.actor.Props;
 import akka.dispatch.Futures;
 import com.google.inject.Singleton;
 import scala.concurrent.Future;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveGuiceModule.MasterActorFactory;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.GeneratePrimes;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 import java.util.BitSet;
+import java.util.function.Supplier;
 
 import static akka.pattern.Patterns.ask;
-import static uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.MASTER_ACTOR;
 
 @Singleton
 public class ParallelSievePrimesGenerator {
 
+    private final ActorSystem actorSystem;
+    private final MasterActorFactory masterActorFactory;
+
     @Inject
-    @Named(MASTER_ACTOR)
-    private ActorRef masterActor;
+    public ParallelSievePrimesGenerator(ActorSystem actorSystem, MasterActorFactory masterActorFactory) {
+        this.actorSystem = actorSystem;
+        this.masterActorFactory = masterActorFactory;
+    }
 
     public Future<Object> generate(Integer n, int numberOfWorkers, int timeoutMillis) {
 
@@ -27,6 +35,10 @@ public class ParallelSievePrimesGenerator {
             result.set(0);
             return Futures.successful(result);
         }
+
+        final Supplier<Actor> actorSupplier = masterActorFactory::create;
+
+        final ActorRef masterActor = actorSystem.actorOf(Props.create(Actor.class, actorSupplier::get));
 
         return ask(masterActor, new GeneratePrimes(n, numberOfWorkers), timeoutMillis);
 
