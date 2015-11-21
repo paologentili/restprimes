@@ -1,16 +1,17 @@
-package uk.co.rbs.restprimes.service.primesgenerator.parallel;
+package uk.co.rbs.restprimes.service.primesgenerator.parallel.actor;
 
 import akka.actor.Props;
 import akka.actor.UntypedActor;
 import play.Logger;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveProtocol.PrimeMultiplesMarkedOff;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveProtocol.SegmentResults;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveProtocol.SendResults;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveProtocol.SievingPrimeFound;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.PrimeMultiplesMarkedOff;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.SegmentResults;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.SendResults;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.SievingPrimeFound;
 
 import java.util.BitSet;
 
 import static java.util.stream.Collectors.toList;
+import static uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.WORKER_ACTOR;
 import static uk.co.rbs.restprimes.utils.RestPrimeUtils.primeNumbersFrom;
 
 /**
@@ -20,7 +21,7 @@ import static uk.co.rbs.restprimes.utils.RestPrimeUtils.primeNumbersFrom;
  */
 public class ParallelSieveWorkerActor extends UntypedActor {
 
-    public static final Logger.ALogger LOGGER = Logger.of("workerActor");
+    public static final Logger.ALogger LOGGER = Logger.of(WORKER_ACTOR);
 
     private int start;
     private int end;

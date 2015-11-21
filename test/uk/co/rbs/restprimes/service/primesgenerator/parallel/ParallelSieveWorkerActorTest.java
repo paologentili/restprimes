@@ -9,10 +9,11 @@ import org.junit.Test;
 import scala.concurrent.Await;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveProtocol.PrimeMultiplesMarkedOff;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveProtocol.SegmentResults;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveProtocol.SendResults;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveProtocol.SievingPrimeFound;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.PrimeMultiplesMarkedOff;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.SegmentResults;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.SendResults;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.SievingPrimeFound;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveWorkerActor;
 
 import static akka.pattern.Patterns.ask;
 import static junit.framework.TestCase.assertTrue;

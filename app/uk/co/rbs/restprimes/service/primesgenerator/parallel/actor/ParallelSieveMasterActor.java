@@ -1,15 +1,15 @@
-package uk.co.rbs.restprimes.service.primesgenerator.parallel;
+package uk.co.rbs.restprimes.service.primesgenerator.parallel.actor;
 
 import akka.actor.ActorRef;
-import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.routing.ActorRefRoutee;
 import akka.routing.BroadcastRoutingLogic;
 import akka.routing.Routee;
 import akka.routing.Router;
 import play.Logger;
+import play.libs.akka.InjectedActorSupport;
 import play.mvc.Results.Chunks.Out;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveProtocol.*;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.*;
 
 import java.util.BitSet;
 import java.util.HashMap;
@@ -18,10 +18,11 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
+import static uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.*;
 
-public class ParallelSieveMasterActor extends UntypedActor {
+public class ParallelSieveMasterActor extends UntypedActor implements InjectedActorSupport {
 
-    private static final Logger.ALogger LOGGER = Logger.of("masterActor");
+    private static final Logger.ALogger LOGGER = Logger.of(MASTER_ACTOR);
 
     private int n;
     private int sqrt;
@@ -40,7 +41,7 @@ public class ParallelSieveMasterActor extends UntypedActor {
 
     private int remainingWorkersBeforeCompletion;
 
-    private ParallelSieveMasterActor(Integer n, Integer numberOfWorkers) {
+    private void init(Integer n, Integer numberOfWorkers) {
 
         this.n = n;
 
@@ -59,14 +60,33 @@ public class ParallelSieveMasterActor extends UntypedActor {
         this.primes.set(0);
         this.primes.set(1);
 
-        this.broadcastWorkers = createWorkersRouter();
+        this.broadcastWorkers = createWorkersRouter(sqrt, n, segmentSize, numberOfWorkers);
 
         LOGGER.debug("created: " + this);
 
     }
 
-    public static Props props(Integer n, Integer numberOfWorkers) {
-        return Props.create(ParallelSieveMasterActor.class, n, numberOfWorkers);
+    private Router createWorkersRouter(int sqrt, int n, int segmentSize, int numberOfWorkers) {
+
+        List<Routee> workers = IntStream
+                .rangeClosed(1, numberOfWorkers)
+                .mapToObj(i -> getActorRefRoutee(i, sqrt, n, segmentSize, numberOfWorkers))
+                .collect(toList());
+
+        return new Router(new BroadcastRoutingLogic(), workers);
+    }
+
+    private ActorRefRoutee getActorRefRoutee(int i, int sqrt, int n, int segmentSize, int numberOfWorkers) {
+
+        int segmentStart = sqrt + ((i-1) * segmentSize) + 1;
+        int segmentEnd = i == numberOfWorkers ? n : segmentStart + segmentSize - 1;
+
+        LOGGER.debug(i + ": creating worker for ("+segmentStart+", "+segmentEnd+")");
+
+        ActorRef workerActor = getContext().actorOf(ParallelSieveWorkerActor.props(segmentStart, segmentEnd));
+        getContext().watch(workerActor);
+
+        return new ActorRefRoutee(workerActor);
     }
 
     @Override
@@ -85,16 +105,23 @@ public class ParallelSieveMasterActor extends UntypedActor {
         if (message instanceof StreamPrimes) {
 
             LOGGER.debug("received message: StreamPrimes");
-            this.chunks = ((StreamPrimes) message).chunks;
-            findPrimes();
+
+            final StreamPrimes streamPrimes = (StreamPrimes) message;
+            this.chunks = streamPrimes.chunks;
+
+            findPrimes(streamPrimes.n, streamPrimes.numberOfWorkers);
         }
 
         if (message instanceof GeneratePrimes) {
 
             LOGGER.debug("received message: GeneratePrimes");
+
             // storing the reference of the initial caller to terminate the web request
             this.webClient = sender();
-            findPrimes();
+
+            GeneratePrimes generatePrimes = (GeneratePrimes) message;
+
+            findPrimes(generatePrimes.n, generatePrimes.numberOfWorkers);
 
         }
 
@@ -120,7 +147,10 @@ public class ParallelSieveMasterActor extends UntypedActor {
 
     }
 
-    private void findPrimes() {
+    private void findPrimes(int n, int numberOfWorkers) {
+
+        init(n, numberOfWorkers);
+
         // find all primes up to sqrt(n)
         findAndBroadcastSievingPrimes();
 
@@ -138,7 +168,7 @@ public class ParallelSieveMasterActor extends UntypedActor {
 
                 pendingEliminations.put(i, numberOfWorkers);
 
-                broadcastWorkers.route(new SievingPrimeFound(i), self());
+                broadcastWorkers.route(new ParallelSieveProtocol.SievingPrimeFound(i), self());
 
                 int multipleIndex = i + i;
 
@@ -204,25 +234,6 @@ public class ParallelSieveMasterActor extends UntypedActor {
 
             LOGGER.info("closed stream");
         }
-    }
-
-    private Router createWorkersRouter() {
-
-        List<Routee> workers = IntStream.rangeClosed(1, numberOfWorkers).mapToObj(i -> {
-
-            int segmentStart = sqrt + ((i-1) * segmentSize) + 1;
-            int segmentEnd = i == numberOfWorkers ? n : segmentStart + segmentSize - 1;
-
-            LOGGER.debug(i + ": creating worker for ("+segmentStart+", "+segmentEnd+")");
-
-            ActorRef workerActor = getContext().actorOf(ParallelSieveWorkerActor.props(segmentStart, segmentEnd));
-            getContext().watch(workerActor);
-
-            return new ActorRefRoutee(workerActor);
-
-        }).collect(toList());
-
-        return new Router(new BroadcastRoutingLogic(), workers);
     }
 
 }

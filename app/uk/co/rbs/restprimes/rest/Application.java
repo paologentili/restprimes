@@ -1,16 +1,16 @@
 package uk.co.rbs.restprimes.rest;
 
+import akka.actor.ActorRef;
 import com.wordnik.swagger.annotations.*;
 import play.Logger;
-import play.libs.Akka;
 import play.libs.F.Promise;
 import play.mvc.Controller;
 import play.mvc.Result;
 import uk.co.rbs.restprimes.service.PrimeGeneratorInvoker;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveMasterActor;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveProtocol.StreamPrimes;
+import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.StreamPrimes;
 
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.inject.Singleton;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
@@ -19,6 +19,7 @@ import static play.libs.Json.toJson;
 import static play.mvc.Results.StringChunks.whenReady;
 import static uk.co.rbs.restprimes.rest.Xml.toXml;
 import static uk.co.rbs.restprimes.service.PrimeGeneratorInvoker.*;
+import static uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.MASTER_ACTOR;
 
 @Singleton
 @Api(value = "/primes", description = "All the prime numbers up to an including a number provided.")
@@ -55,13 +56,13 @@ public class Application extends Controller {
         }
     }
 
+    @Inject
+    @Named(MASTER_ACTOR)
+    private ActorRef masterActor;
+
     public Result primesStream(Integer n) {
         Logger.info("primes stream called");
-        return ok(whenReady(out -> {
-            Akka.system()
-                .actorOf(ParallelSieveMasterActor.props(n, 8))
-                .tell(new StreamPrimes(out), null);
-        })).as("application/json");
+        return ok(whenReady(out -> masterActor.tell(new StreamPrimes(n, 8, out), null))).as("application/json");
     }
 
 }

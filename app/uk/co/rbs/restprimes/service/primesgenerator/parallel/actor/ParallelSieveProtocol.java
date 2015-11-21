@@ -1,4 +1,4 @@
-package uk.co.rbs.restprimes.service.primesgenerator.parallel;
+package uk.co.rbs.restprimes.service.primesgenerator.parallel.actor;
 
 import play.mvc.Results.Chunks.Out;
 
@@ -6,7 +6,16 @@ import java.util.BitSet;
 
 public class ParallelSieveProtocol {
 
+    public static final String MASTER_ACTOR = "master-actor";
+    public static final String WORKER_ACTOR = "worker-actor";
+
     public static class GeneratePrimes {
+        public int n;
+        public int numberOfWorkers;
+        public GeneratePrimes(int n, int numberOfWorkers) {
+            this.n = n;
+            this.numberOfWorkers = numberOfWorkers;
+        }
     }
 
     public static class SendResults {
@@ -38,8 +47,12 @@ public class ParallelSieveProtocol {
     }
 
     public static class StreamPrimes {
+        public int n;
+        public int numberOfWorkers;
         public Out<String> chunks;
-        public StreamPrimes(Out<String> chunks) {
+        public StreamPrimes(int n, int numberOfWorkers, Out<String> chunks) {
+            this.n = n;
+            this.numberOfWorkers = numberOfWorkers;
             this.chunks = chunks;
         }
     }
