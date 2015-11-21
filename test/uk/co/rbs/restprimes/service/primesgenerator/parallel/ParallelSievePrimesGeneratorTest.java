@@ -35,13 +35,13 @@ public class ParallelSievePrimesGeneratorTest {
     public void shouldReturnEmptyListForZeroAndOne() throws Exception {
 
         // when
-        Object result = Await.result(primesGenerator.generate(0, 1, 10000), Duration.create("2 seconds"));
+        Object result = Await.result(primesGenerator.generatePrimes(0, 1, 10000), Duration.create("2 seconds"));
 
         // then
         assertThat(primeNumbersFrom((BitSet)result, 0), equalTo(emptyList()));
 
         // when
-        result = Await.result(primesGenerator.generate(1, 1, 10000), Duration.create("2 seconds"));
+        result = Await.result(primesGenerator.generatePrimes(1, 1, 10000), Duration.create("2 seconds"));
 
         // then
         assertThat(primeNumbersFrom((BitSet)result, 0), equalTo(emptyList()));
@@ -52,7 +52,7 @@ public class ParallelSievePrimesGeneratorTest {
     public void shouldSendAMessageOfTypeGeneratePrimesToTheMasterActor() throws Exception {
 
         // when
-        Object result = Await.result(primesGenerator.generate(30, 1, 10000), Duration.create("2 seconds"));
+        Object result = Await.result(primesGenerator.generatePrimes(30, 1, 10000), Duration.create("2 seconds"));
 
         // then
         // verify master actor received a message like GeneratePrimes(20, 1)
@@ -69,16 +69,16 @@ public class ParallelSievePrimesGeneratorTest {
 
         final int number = 30;
 
-        result = Await.result(primesGenerator.generate(number, 1, timeoutMillis), _2sec);
+        result = Await.result(primesGenerator.generatePrimes(number, 1, timeoutMillis), _2sec);
         assertThat(primeNumbersFrom((BitSet)result, number), equalTo(primesTo30));
 
-        result = Await.result(primesGenerator.generate(number, 2, timeoutMillis), _2sec);
+        result = Await.result(primesGenerator.generatePrimes(number, 2, timeoutMillis), _2sec);
         assertThat(primeNumbersFrom((BitSet)result, number), equalTo(primesTo30));
 
-        result = Await.result(primesGenerator.generate(number, 4, timeoutMillis), _2sec);
+        result = Await.result(primesGenerator.generatePrimes(number, 4, timeoutMillis), _2sec);
         assertThat(primeNumbersFrom((BitSet)result, number), equalTo(primesTo30));
 
-        result = Await.result(primesGenerator.generate(number, 5, timeoutMillis), _2sec);
+        result = Await.result(primesGenerator.generatePrimes(number, 5, timeoutMillis), _2sec);
         assertThat(primeNumbersFrom((BitSet)result, number), equalTo(primesTo30));
     }
 

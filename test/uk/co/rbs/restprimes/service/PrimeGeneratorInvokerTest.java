@@ -3,7 +3,6 @@ package uk.co.rbs.restprimes.service;
 import akka.dispatch.Futures;
 import org.junit.Before;
 import org.junit.Test;
-import scala.concurrent.Future;
 import uk.co.rbs.restprimes.rest.InvalidParameterException;
 import uk.co.rbs.restprimes.service.primesgenerator.naive.NaivePrimesGenerator;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSievePrimesGenerator;
@@ -64,11 +63,11 @@ public class PrimeGeneratorInvokerTest {
 
     @Test
     public void shouldInvokeParallelGenerator() {
-        when(parallelSievePrimesGenerator.generate(any(Integer.class), anyInt(), anyInt()))
+        when(parallelSievePrimesGenerator.generatePrimes(any(Integer.class), anyInt(), anyInt()))
                 .thenReturn(Futures.successful(new BitSet()));
 
         invoker.invoke(10, ALGO_PARALLEL);
 
-        verify(parallelSievePrimesGenerator, times(1)).generate(any(Integer.class), anyInt(), anyInt());
+        verify(parallelSievePrimesGenerator, times(1)).generatePrimes(any(Integer.class), anyInt(), anyInt());
     }
 }

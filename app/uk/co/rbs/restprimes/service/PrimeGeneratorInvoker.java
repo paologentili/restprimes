@@ -4,6 +4,7 @@ import com.google.common.collect.Sets;
 import com.google.inject.Singleton;
 import play.Logger;
 import play.libs.F.Promise;
+import play.mvc.Results.Chunks.Out;
 import uk.co.rbs.restprimes.rest.InvalidParameterException;
 import uk.co.rbs.restprimes.service.primesgenerator.naive.NaivePrimesGenerator;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSievePrimesGenerator;
@@ -59,25 +60,24 @@ public class PrimeGeneratorInvoker {
             return Promise.pure(Collections.emptyList());
         }
 
-        final long start = currentTimeMillis();
-
         Promise<List<Integer>> promise;
 
         if (ALGO_PARALLEL.equals(algorithm)) {
 
+            final long start = currentTimeMillis();
+
             int numberOfWorkers = Runtime.getRuntime().availableProcessors() * 3 - 1;
 
-            promise = Promise.wrap(parallelSievePrimesGenerator.generate(n, numberOfWorkers, TIMEOUT_MILLIS))
+            promise = Promise.wrap(parallelSievePrimesGenerator.generatePrimes(n, numberOfWorkers, TIMEOUT_MILLIS))
                     .map(resp -> {
                         Logger.info("time to calculate prime numbers: " + (currentTimeMillis() - start) + " millis");
                         return resp;
                     })
-                    .map(bitSet -> primeNumbersFrom((BitSet)bitSet, n));  // return Collections.emptyList() to avoid memory overflow
+                    .map(bitSet -> primeNumbersFrom((BitSet)bitSet, n));
 
 
         } else if (ALGO_SEQUENTIAL.equals(algorithm)) {
-            promise = Promise.promise(() -> sequentialPrimesGenerator.generate(n))
-                    .map(objResult -> (List)objResult);
+            promise = Promise.promise(() -> sequentialPrimesGenerator.generate(n));
 
         } else {
             promise = Promise.promise(() -> naivePrimesGenerator.generate(n));
@@ -85,6 +85,10 @@ public class PrimeGeneratorInvoker {
 
         return promise;
 
+    }
+
+    public void invokeStream(Integer n, Out<String> out) {
+        parallelSievePrimesGenerator.streamPrimes(n, out);
     }
 
 }

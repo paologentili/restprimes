@@ -1,23 +1,16 @@
 package uk.co.rbs.restprimes.rest;
 
-import akka.actor.Actor;
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.Props;
 import com.wordnik.swagger.annotations.*;
 import play.Logger;
 import play.libs.F.Promise;
 import play.mvc.Controller;
 import play.mvc.Result;
 import uk.co.rbs.restprimes.service.PrimeGeneratorInvoker;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveGuiceModule.MasterActorFactory;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.StreamPrimes;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
-import java.util.function.Supplier;
 
 import static play.libs.Json.toJson;
 import static play.mvc.Results.StringChunks.whenReady;
@@ -59,19 +52,9 @@ public class Application extends Controller {
         }
     }
 
-    @Inject
-    private MasterActorFactory masterActorFactory;
-
-    @Inject
-    private ActorSystem actorSystem;
 
     public Result primesStream(Integer n) {
-
-        final Supplier<Actor> actorSupplier = (masterActorFactory::create);
-        final ActorRef masterActor = actorSystem.actorOf(Props.create(Actor.class, actorSupplier::get));
-
-        // TODO implement streaming for xml as well
-        return ok(whenReady(out -> masterActor.tell(new StreamPrimes(n, 8, out), null))).as("application/json");
+        return ok(whenReady(out -> primeGeneratorInvoker.invokeStream(n, out))).as("application/json");
     }
 
 }
