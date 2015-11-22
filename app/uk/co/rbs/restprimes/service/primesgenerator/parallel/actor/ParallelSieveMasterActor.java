@@ -1,10 +1,10 @@
 package uk.co.rbs.restprimes.service.primesgenerator.parallel.actor;
 
 import akka.actor.ActorRef;
+import akka.actor.IllegalActorStateException;
 import akka.actor.UntypedActor;
 import akka.routing.ActorRefRoutee;
 import akka.routing.BroadcastRoutingLogic;
-import akka.routing.Routee;
 import akka.routing.Router;
 import play.Logger;
 import play.mvc.Results.Chunks.Out;
@@ -14,7 +14,6 @@ import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieve
 import javax.inject.Inject;
 import java.util.BitSet;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 
@@ -23,7 +22,7 @@ import static uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.Parall
 
 public class ParallelSieveMasterActor extends UntypedActor implements InjectedUnnamedActorSupport {
 
-    private static final Logger.ALogger LOGGER = Logger.of(MASTER_ACTOR);
+    private static final Logger.ALogger LOGGER = Logger.of(MASTER_ACTOR_NAME);
 
     @Inject
     private WorkerActorFactory workerActorFactory;
@@ -44,33 +43,6 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedUn
 
     private int remainingWorkersBeforeCompletion;
 
-    private Router createWorkersRouter(int sqrt, int n, int numberOfWorkers) {
-
-        List<Routee> workers = IntStream
-                .rangeClosed(1, numberOfWorkers)
-                .mapToObj(i -> getActorRefRoutee(i, sqrt, n, numberOfWorkers))
-                .collect(toList());
-
-        return new Router(new BroadcastRoutingLogic(), workers);
-    }
-
-    private ActorRefRoutee getActorRefRoutee(int i, int sqrt, int n, int numberOfWorkers) {
-
-        int segmentSize = (n - sqrt) / numberOfWorkers;
-
-        int segmentStart = sqrt + ((i-1) * segmentSize) + 1;
-
-        int segmentEnd = i == numberOfWorkers ? n : segmentStart + segmentSize - 1;
-
-        ActorRef workerActor = injectedUnnamedChild(() -> workerActorFactory.create(segmentStart, segmentEnd));
-
-        LOGGER.debug(getSelf().path().uid() + ": Created worker for segment ["+segmentStart+", "+segmentEnd+"] " + workerActor.path().uid());
-
-        getContext().watch(workerActor);
-
-        return new ActorRefRoutee(workerActor);
-    }
-
     @Override
     public String toString() {
         return "ParallelSieveMasterActor{" +
@@ -85,26 +57,25 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedUn
     public void onReceive(Object message) throws Exception {
 
         if (message instanceof StreamPrimes) {
-
             log(message);
 
             final StreamPrimes streamPrimes = (StreamPrimes) message;
+
+            // storing the reference to the output stream
             this.chunks = streamPrimes.chunks;
 
             findPrimes(streamPrimes.n, streamPrimes.numberOfWorkers);
         }
 
         if (message instanceof GeneratePrimes) {
-
             log(message);
+
+            final GeneratePrimes generatePrimes = (GeneratePrimes) message;
 
             // storing the reference of the initial caller to terminate the web request
             this.webClient = sender();
 
-            GeneratePrimes generatePrimes = (GeneratePrimes) message;
-
             findPrimes(generatePrimes.n, generatePrimes.numberOfWorkers);
-
         }
 
         if (message instanceof PrimeMultiplesMarkedOff) {
@@ -156,11 +127,32 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedUn
         this.sqrt = (int) Math.sqrt(this.n) + 1;
 
         this.primes = new BitSet(sqrt);
-        this.primes.set(0);
-        this.primes.set(1);
 
-        this.broadcastWorkers = createWorkersRouter(sqrt, n, numberOfWorkers);
+        this.primes.set(0); // 0 is not prime
+        this.primes.set(1); // 1 is not prime
 
+        this.broadcastWorkers = new Router(new BroadcastRoutingLogic(), IntStream.rangeClosed(1, numberOfWorkers)
+                .mapToObj(i -> getActorRefRoutee(i, sqrt, n, numberOfWorkers))
+                .collect(toList())
+        );
+
+    }
+
+    private ActorRefRoutee getActorRefRoutee(int i, int sqrt, int n, int numberOfWorkers) {
+
+        int segmentSize = (n - sqrt) / numberOfWorkers;
+
+        int segmentStart = sqrt + ((i-1) * segmentSize) + 1;
+
+        int segmentEnd = i == numberOfWorkers ? n : segmentStart + segmentSize - 1;
+
+        ActorRef workerActor = injectedUnnamedChild(() -> workerActorFactory.create(segmentStart, segmentEnd));
+
+        LOGGER.debug(getSelf().path().uid() + ": Created worker for segment ["+segmentStart+", "+segmentEnd+"] " + workerActor.path().uid());
+
+        getContext().watch(workerActor);
+
+        return new ActorRefRoutee(workerActor);
     }
 
     private void findAndBroadcastSievingPrimes() {
@@ -206,12 +198,12 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedUn
 
     private void terminate() {
 
-        LOGGER.info(getSelf().path().uid() + ": Computation terminated, sending results to (webClient="+webClient+", chunks="+chunks+")");
+        LOGGER.debug(getSelf().path().uid() + ": Computation terminated, sending results to (webClient="+webClient+", chunks="+chunks+")");
 
         if (this.webClient != null) {
             this.webClient.tell(primes, self());
 
-        } else {
+        } else if (this.chunks != null) {
 
             // TODO ugly. Use jackson as in http://stackoverflow.com/questions/29802060/java-play-framework-2-3-return-streamed-json-using-jackson and provide solution to stream xml as well
 
@@ -240,6 +232,9 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedUn
             chunks.close();
 
             LOGGER.info(getSelf().path().uid() + ": Closed stream");
+
+        } else {
+            throw new IllegalActorStateException("no destination to send the results were configured.");
         }
     }
 

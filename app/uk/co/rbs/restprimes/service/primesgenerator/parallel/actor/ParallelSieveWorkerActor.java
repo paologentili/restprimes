@@ -12,12 +12,12 @@ import javax.inject.Inject;
 import java.util.BitSet;
 
 import static java.util.stream.Collectors.toList;
-import static uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.WORKER_ACTOR;
+import static uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.WORKER_ACTOR_NAME;
 import static uk.co.rbs.restprimes.utils.RestPrimeUtils.primeNumbersFrom;
 
 public class ParallelSieveWorkerActor extends UntypedActor {
 
-    private static final Logger.ALogger LOGGER = Logger.of(WORKER_ACTOR);
+    private static final Logger.ALogger LOGGER = Logger.of(WORKER_ACTOR_NAME);
 
     private final Integer segmentStart;
     private final Integer segmentEnd;

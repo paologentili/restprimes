@@ -66,11 +66,9 @@ public class PrimeGeneratorInvoker {
 
             final long start = currentTimeMillis();
 
-            int numberOfWorkers = Runtime.getRuntime().availableProcessors() * 3 - 1;
-
-            promise = Promise.wrap(parallelSievePrimesGenerator.generatePrimes(n, numberOfWorkers, TIMEOUT_MILLIS))
+            promise = Promise.wrap(parallelSievePrimesGenerator.generatePrimes(n, TIMEOUT_MILLIS))
                     .map(resp -> {
-                        Logger.info("time to calculate prime numbers: " + (currentTimeMillis() - start) + " millis");
+                        Logger.info("Time to calculate prime numbers: " + (currentTimeMillis() - start) + " millis");
                         return resp;
                     })
                     .map(bitSet -> primeNumbersFrom((BitSet)bitSet, n));

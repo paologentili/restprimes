@@ -21,7 +21,7 @@ public class PrimeGeneratorInvokerTest {
     private SequentialPrimesGenerator sequentialPrimesGenerator;
     private ParallelSievePrimesGenerator parallelSievePrimesGenerator;
 
-    private PrimeGeneratorInvoker invoker;
+    private PrimeGeneratorInvoker primeGeneratorInvoker;
 
     @Before
     public void setupMocks() {
@@ -32,42 +32,42 @@ public class PrimeGeneratorInvokerTest {
 
     @Before
     public void setup() {
-        invoker = new PrimeGeneratorInvoker(
+        primeGeneratorInvoker = new PrimeGeneratorInvoker(
                 naivePrimesGenerator,
                 sequentialPrimesGenerator,
                 parallelSievePrimesGenerator
         );
     }
 
-    @Test(expected= InvalidParameterException.class)
+    @Test(expected=InvalidParameterException.class)
     public void shouldThrowErrorForUnsupportedAlgorithm() {
-        invoker.invoke(10, "unsupported");
+        primeGeneratorInvoker.invoke(10, "unsupported");
     }
 
-    @Test(expected= InvalidParameterException.class)
+    @Test(expected=InvalidParameterException.class)
     public void shouldThrowErrorForInvalidNumber() {
-        invoker.invoke(-10, ALGO_NAIVE);
+        primeGeneratorInvoker.invoke(-10, ALGO_NAIVE);
     }
 
     @Test
     public void shouldInvokeNaiveGenerator() {
-        invoker.invoke(10, ALGO_NAIVE);
+        primeGeneratorInvoker.invoke(10, ALGO_NAIVE);
         verify(naivePrimesGenerator, times(1)).generate(10);
     }
 
     @Test
     public void shouldInvokeSequentialGenerator() {
-        invoker.invoke(10, ALGO_SEQUENTIAL);
+        primeGeneratorInvoker.invoke(10, ALGO_SEQUENTIAL);
         verify(sequentialPrimesGenerator, times(1)).generate(10);
     }
 
     @Test
     public void shouldInvokeParallelGenerator() {
-        when(parallelSievePrimesGenerator.generatePrimes(any(Integer.class), anyInt(), anyInt()))
+        when(parallelSievePrimesGenerator.generatePrimes(any(Integer.class), any(Integer.class)))
                 .thenReturn(Futures.successful(new BitSet()));
 
-        invoker.invoke(10, ALGO_PARALLEL);
+        primeGeneratorInvoker.invoke(10, ALGO_PARALLEL);
 
-        verify(parallelSievePrimesGenerator, times(1)).generatePrimes(any(Integer.class), anyInt(), anyInt());
+        verify(parallelSievePrimesGenerator, times(1)).generatePrimes(any(Integer.class), any(Integer.class));
     }
 }
