@@ -23,13 +23,13 @@ public class ParallelSievePrimesGenerator {
 
     private final ActorSystem actorSystem;
     private final MasterActorFactory masterActorFactory;
-    private final Integer numberOfWorkers;
+    private final WorkerPolicy workerPolicy;
 
     @Inject
     public ParallelSievePrimesGenerator(ActorSystem actorSystem, MasterActorFactory masterActorFactory, WorkerPolicy workerPolicy) {
         this.actorSystem = actorSystem;
         this.masterActorFactory = masterActorFactory;
-        this.numberOfWorkers = workerPolicy.numberOfWorkers();
+        this.workerPolicy = workerPolicy;
     }
 
     /**
@@ -44,10 +44,20 @@ public class ParallelSievePrimesGenerator {
             result.set(0);
             return Futures.successful(result);
         }
+
+        final Integer numberOfWorkers = workerPolicy.numberOfWorkers();
+
         if (numberOfWorkers < 1) {
             throw new IllegalArgumentException("at least one worker is required for this algorithm");
         }
-        return ask(newMasterActor(), new GeneratePrimes(n, numberOfWorkers), timeoutMillis);
+
+        final ActorRef masterActor = newMasterActor();
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return ask(masterActor, new GeneratePrimes(n, numberOfWorkers), timeoutMillis);
     }
 
     /**
@@ -57,15 +67,15 @@ public class ParallelSievePrimesGenerator {
      * @param out the output where to send data in chunks
      */
     public void streamPrimes(Integer n, Out<String> out) {
-        newMasterActor().tell(new StreamPrimes(n, numberOfWorkers, out), null);
+        newMasterActor().tell(new StreamPrimes(n, workerPolicy.numberOfWorkers(), out), null);
     }
 
     // ------------------------------------------------------------------------
 
-    // TODO is there a better way to create a different master actor instance from DI, for every request?
     private ActorRef newMasterActor() {
         final Supplier<Actor> actorSupplier = masterActorFactory::create;
-        return actorSystem.actorOf(Props.create(Actor.class, actorSupplier::get));
+        final Props props = Props.create(Actor.class, actorSupplier::get);
+        return actorSystem.actorOf(props);
     }
 
 }

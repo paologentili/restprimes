@@ -24,8 +24,7 @@ public class ParallelSieveWorkerActor extends UntypedActor {
 
     private final BitSet primes;
 
-    @Inject
-    public ParallelSieveWorkerActor(@Assisted("segmentStart") Integer segmentStart, @Assisted("segmentEnd") Integer segmentEnd) {
+    public ParallelSieveWorkerActor(Integer segmentStart, Integer segmentEnd) {
 
         this.segmentStart = segmentStart;
         this.segmentEnd = segmentEnd;
@@ -74,4 +73,5 @@ public class ParallelSieveWorkerActor extends UntypedActor {
     private void log(Object message) {
         LOGGER.debug(Thread.currentThread().getName() + ": received message " + message);
     }
+
 }

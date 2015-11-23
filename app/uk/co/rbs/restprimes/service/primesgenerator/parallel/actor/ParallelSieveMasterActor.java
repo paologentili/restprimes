@@ -3,29 +3,28 @@ package uk.co.rbs.restprimes.service.primesgenerator.parallel.actor;
 import akka.actor.ActorRef;
 import akka.actor.IllegalActorStateException;
 import akka.actor.UntypedActor;
-import akka.routing.ActorRefRoutee;
-import akka.routing.BroadcastRoutingLogic;
 import akka.routing.Router;
 import play.Logger;
 import play.mvc.Results.Chunks.Out;
-import uk.co.rbs.restprimes.service.primesgenerator.parallel.ParallelSieveGuiceModule.WorkerActorFactory;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.*;
 
 import javax.inject.Inject;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.IntStream;
 
-import static java.util.stream.Collectors.toList;
 import static uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.*;
 
-public class ParallelSieveMasterActor extends UntypedActor implements InjectedUnnamedActorSupport {
+public class ParallelSieveMasterActor extends UntypedActor {
 
     private static final Logger.ALogger LOGGER = Logger.of(MASTER_ACTOR_NAME);
 
+    private final WorkerActorRouterFactory workerActorRouterFactory;
+
     @Inject
-    private WorkerActorFactory workerActorFactory;
+    public ParallelSieveMasterActor(WorkerActorRouterFactory workerActorRouter) {
+        this.workerActorRouterFactory = workerActorRouter;
+    }
 
     private int n;
     private int sqrt;
@@ -39,19 +38,9 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedUn
     private ActorRef webClient;
     private Out<String> chunks;
 
-    private Router broadcastWorkers;
+    private Router broadcastRouter;
 
     private int remainingWorkersBeforeCompletion;
-
-    @Override
-    public String toString() {
-        return "ParallelSieveMasterActor{" +
-                "uid= " + getSelf().path().uid() +
-                "n=" + n +
-                ", sqrt=" + sqrt +
-                ", numberOfWorkers=" + numberOfWorkers +
-                '}';
-    }
 
     @Override
     public void onReceive(Object message) throws Exception {
@@ -90,7 +79,7 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedUn
             LOGGER.trace("remaining tasks for prime " + prime + ": " + pendingEliminations.getOrDefault(prime, 0));
 
             if (noMorePrimes && pendingEliminations.isEmpty()) {
-                broadcastWorkers.route(new SendResults(), self());
+                broadcastRouter.route(new SendResults(), self());
             }
         }
 
@@ -131,28 +120,8 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedUn
         this.primes.set(0); // 0 is not prime
         this.primes.set(1); // 1 is not prime
 
-        this.broadcastWorkers = new Router(new BroadcastRoutingLogic(), IntStream.rangeClosed(1, numberOfWorkers)
-                .mapToObj(i -> getActorRefRoutee(i, sqrt, n, numberOfWorkers))
-                .collect(toList())
-        );
+        this.broadcastRouter = workerActorRouterFactory.createBroadcastingRouter(sqrt, n, numberOfWorkers);
 
-    }
-
-    private ActorRefRoutee getActorRefRoutee(int i, int sqrt, int n, int numberOfWorkers) {
-
-        int segmentSize = (n - sqrt) / numberOfWorkers;
-
-        int segmentStart = sqrt + ((i-1) * segmentSize) + 1;
-
-        int segmentEnd = i == numberOfWorkers ? n : segmentStart + segmentSize - 1;
-
-        ActorRef workerActor = injectedUnnamedChild(() -> workerActorFactory.create(segmentStart, segmentEnd));
-
-        LOGGER.debug(getSelf().path().uid() + ": Created worker for segment ["+segmentStart+", "+segmentEnd+"] " + workerActor.path().uid());
-
-        getContext().watch(workerActor);
-
-        return new ActorRefRoutee(workerActor);
     }
 
     private void findAndBroadcastSievingPrimes() {
@@ -165,7 +134,7 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedUn
 
                 pendingEliminations.put(i, numberOfWorkers);
 
-                broadcastWorkers.route(new SievingPrimeFound(i), self());
+                broadcastRouter.route(new SievingPrimeFound(i), self());
 
                 int multipleIndex = i + i;
 
@@ -240,6 +209,16 @@ public class ParallelSieveMasterActor extends UntypedActor implements InjectedUn
 
     private void log(Object message) {
         LOGGER.debug(getSelf().path().uid() + ": Received message " + message);
+    }
+
+    @Override
+    public String toString() {
+        return "ParallelSieveMasterActor{" +
+                "uid= " + getSelf().path().uid() +
+                "n=" + n +
+                ", sqrt=" + sqrt +
+                ", numberOfWorkers=" + numberOfWorkers +
+                '}';
     }
 
 }

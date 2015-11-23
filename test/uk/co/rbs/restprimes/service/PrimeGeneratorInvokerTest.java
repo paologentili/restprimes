@@ -52,13 +52,13 @@ public class PrimeGeneratorInvokerTest {
     @Test
     public void shouldInvokeNaiveGenerator() {
         primeGeneratorInvoker.invoke(10, ALGO_NAIVE);
-        verify(naivePrimesGenerator, times(1)).generate(10);
+        verify(naivePrimesGenerator, timeout(1000).times(1)).generate(10);
     }
 
     @Test
     public void shouldInvokeSequentialGenerator() {
         primeGeneratorInvoker.invoke(10, ALGO_SEQUENTIAL);
-        verify(sequentialPrimesGenerator, times(1)).generate(10);
+        verify(sequentialPrimesGenerator, timeout(1000).times(1)).generate(10);
     }
 
     @Test
@@ -68,6 +68,6 @@ public class PrimeGeneratorInvokerTest {
 
         primeGeneratorInvoker.invoke(10, ALGO_PARALLEL);
 
-        verify(parallelSievePrimesGenerator, times(1)).generatePrimes(any(Integer.class), any(Integer.class));
+        verify(parallelSievePrimesGenerator, timeout(1000).times(1)).generatePrimes(any(Integer.class), any(Integer.class));
     }
 }
