@@ -1,8 +1,9 @@
 package uk.co.rbs.restprimes.service.primesgenerator.parallel.actor;
 
+import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.IllegalActorStateException;
-import akka.actor.UntypedActor;
+import akka.japi.pf.ReceiveBuilder;
 import akka.routing.Router;
 import play.Logger;
 import play.mvc.Results.Chunks.Out;
@@ -15,16 +16,11 @@ import java.util.Map;
 
 import static uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.*;
 
-public class ParallelSieveMasterActor extends UntypedActor {
+public class ParallelSieveMasterActor extends AbstractActor {
 
     private static final Logger.ALogger LOGGER = Logger.of(MASTER_ACTOR_NAME);
 
     private final WorkerActorRouterFactory workerActorRouterFactory;
-
-    @Inject
-    public ParallelSieveMasterActor(WorkerActorRouterFactory workerActorRouter) {
-        this.workerActorRouterFactory = workerActorRouter;
-    }
 
     private int n;
     private int sqrt;
@@ -42,54 +38,59 @@ public class ParallelSieveMasterActor extends UntypedActor {
 
     private int remainingWorkersBeforeCompletion;
 
-    @Override
-    public void onReceive(Object message) throws Exception {
+    @Inject
+    public ParallelSieveMasterActor(WorkerActorRouterFactory workerActorRouterFactory) {
+        this.workerActorRouterFactory = workerActorRouterFactory;
 
-        if (message instanceof StreamPrimes) {
-            log(message);
-
-            final StreamPrimes streamPrimes = (StreamPrimes) message;
-
-            // storing the reference to the output stream
-            this.chunks = streamPrimes.chunks;
-
-            findPrimes(streamPrimes.n, streamPrimes.numberOfWorkers);
-        }
-
-        if (message instanceof GeneratePrimes) {
-            log(message);
-
-            final GeneratePrimes generatePrimes = (GeneratePrimes) message;
-
-            // storing the reference of the initial caller to terminate the web request
-            this.webClient = sender();
-
-            findPrimes(generatePrimes.n, generatePrimes.numberOfWorkers);
-        }
-
-        if (message instanceof PrimeMultiplesMarkedOff) {
-            log(message);
-
-            Integer prime = ((PrimeMultiplesMarkedOff) message).prime;
-
-            pendingEliminations.put(prime, pendingEliminations.get(prime)-1);
-            if (pendingEliminations.get(prime) <= 0) {
-                pendingEliminations.remove(prime);
-            }
-            LOGGER.trace("remaining tasks for prime " + prime + ": " + pendingEliminations.getOrDefault(prime, 0));
-
-            if (noMorePrimes && pendingEliminations.isEmpty()) {
-                broadcastRouter.route(new SendResults(), self());
-            }
-        }
-
-        if (message instanceof SegmentResults) {
-            log(message);
-
-            mergeSegmentResultsAndTerminate((SegmentResults) message);
-        }
-
+        receive(ReceiveBuilder
+                .match(StreamPrimes.class, this::streamPrimesMsgHandler)
+                .match(GeneratePrimes.class, this::generatePrimesMsgHandler)
+                .match(PrimeMultiplesMarkedOff.class, this::primeMultiplesMarkedOffMsgHandler)
+                .match(SegmentResults.class, this::segmentResultMsgHandler)
+                .build()
+        );
     }
+
+    private void streamPrimesMsgHandler(StreamPrimes message) {
+        log(message);
+
+        // storing the reference to the output stream
+        this.chunks = message.chunks;
+
+        findPrimes(message.n, message.numberOfWorkers);
+    }
+
+    private void generatePrimesMsgHandler(GeneratePrimes message) {
+        log(message);
+
+        // storing the reference of the initial caller to terminate the web request
+        this.webClient = sender();
+
+        findPrimes(message.n, message.numberOfWorkers);
+    }
+
+    private void primeMultiplesMarkedOffMsgHandler(PrimeMultiplesMarkedOff message) {
+        log(message);
+
+        Integer prime = message.prime;
+
+        pendingEliminations.put(prime, pendingEliminations.get(prime)-1);
+        if (pendingEliminations.get(prime) <= 0) {
+            pendingEliminations.remove(prime);
+        }
+        LOGGER.trace("remaining tasks for prime " + prime + ": " + pendingEliminations.getOrDefault(prime, 0));
+
+        if (noMorePrimes && pendingEliminations.isEmpty()) {
+            broadcastRouter.route(new SendResults(), self());
+        }
+    }
+
+    private void segmentResultMsgHandler(SegmentResults message) {
+        log(message);
+        mergeSegmentResultsAndTerminate(message);
+    }
+
+    // ------------------------------------------------------------------------
 
     private void findPrimes(int n, int numberOfWorkers) {
 
@@ -128,9 +129,9 @@ public class ParallelSieveMasterActor extends UntypedActor {
 
         for (int i = 2; i <= sqrt; i++) {
 
-            if (!primes.get(i)) {
+            if (isPrime(i)) {
 
-                LOGGER.debug(getSelf().path().uid() + ": Found a sieving prime: " + i);
+                LOGGER.debug(self().path().uid() + ": Found a sieving prime: " + i);
 
                 pendingEliminations.put(i, numberOfWorkers);
 
@@ -167,7 +168,7 @@ public class ParallelSieveMasterActor extends UntypedActor {
 
     private void terminate() {
 
-        LOGGER.debug(getSelf().path().uid() + ": Computation terminated, sending results to (webClient="+webClient+", chunks="+chunks+")");
+        LOGGER.debug(self().path().uid() + ": Computation terminated, sending results to (webClient="+webClient+", chunks="+chunks+")");
 
         if (this.webClient != null) {
             this.webClient.tell(primes, self());
@@ -180,9 +181,9 @@ public class ParallelSieveMasterActor extends UntypedActor {
 
             boolean isFirst = true;
 
-            for (int i = 0; i < n; i++) {
+            for (int i = 1; i <= n; i++) {
 
-                if (!primes.get(i)) {
+                if (isPrime(i)) {
 
                     if (!isFirst) {
                         chunks.write(",");
@@ -200,7 +201,7 @@ public class ParallelSieveMasterActor extends UntypedActor {
 
             chunks.close();
 
-            LOGGER.info(getSelf().path().uid() + ": Closed stream");
+            LOGGER.info(self().path().uid() + ": Closed stream");
 
         } else {
             throw new IllegalActorStateException("no destination to send the results were configured.");
@@ -208,13 +209,17 @@ public class ParallelSieveMasterActor extends UntypedActor {
     }
 
     private void log(Object message) {
-        LOGGER.debug(getSelf().path().uid() + ": Received message " + message);
+        LOGGER.debug(self().path().uid() + ": Received message " + message);
+    }
+
+    private boolean isPrime(int i) {
+        return !primes.get(i);
     }
 
     @Override
     public String toString() {
         return "ParallelSieveMasterActor{" +
-                "uid= " + getSelf().path().uid() +
+                "uid= " + self().path().uid() +
                 "n=" + n +
                 ", sqrt=" + sqrt +
                 ", numberOfWorkers=" + numberOfWorkers +

@@ -1,21 +1,20 @@
 package uk.co.rbs.restprimes.service.primesgenerator.parallel.actor;
 
-import akka.actor.UntypedActor;
-import com.google.inject.assistedinject.Assisted;
+import akka.actor.AbstractActor;
+import akka.japi.pf.ReceiveBuilder;
 import play.Logger;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.PrimeMultiplesMarkedOff;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.SegmentResults;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.SendResults;
 import uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.SievingPrimeFound;
 
-import javax.inject.Inject;
 import java.util.BitSet;
 
 import static java.util.stream.Collectors.toList;
 import static uk.co.rbs.restprimes.service.primesgenerator.parallel.actor.ParallelSieveProtocol.WORKER_ACTOR_NAME;
 import static uk.co.rbs.restprimes.utils.RestPrimeUtils.primeNumbersFrom;
 
-public class ParallelSieveWorkerActor extends UntypedActor {
+public class ParallelSieveWorkerActor extends AbstractActor {
 
     private static final Logger.ALogger LOGGER = Logger.of(WORKER_ACTOR_NAME);
 
@@ -30,28 +29,25 @@ public class ParallelSieveWorkerActor extends UntypedActor {
         this.segmentEnd = segmentEnd;
 
         this.primes = new BitSet();
+
+        receive(ReceiveBuilder
+                .match(SievingPrimeFound.class, this::sievingPrimeFoundMsgHandler)
+                .match(SendResults.class, this::sendResultsMsgHandler)
+                .build()
+
+        );
     }
 
-    @Override
-    public void onReceive(Object message) throws Exception {
+    private void sendResultsMsgHandler(SendResults message) {
+        log(message);
+        LOGGER.trace("sending results of ("+segmentStart+", "+segmentEnd+"): " + primeNumbersFrom(primes, segmentEnd-segmentStart).stream().map(i -> i + segmentStart).collect(toList()));
+        sender().tell(new SegmentResults(segmentStart, segmentEnd, primes), self());
+    }
 
-        if (message instanceof SievingPrimeFound) {
-            log(message);
-
-            SievingPrimeFound primeNumberFound = (SievingPrimeFound) message;
-
-            removeMultiples(primeNumberFound.prime);
-
-            sender().tell(new PrimeMultiplesMarkedOff(primeNumberFound.prime), self());
-        }
-
-        if (message instanceof SendResults) {
-            log(message);
-
-            LOGGER.trace("sending results of ("+segmentStart+", "+segmentEnd+"): " + primeNumbersFrom(primes, segmentEnd-segmentStart).stream().map(i -> i + segmentStart).collect(toList()));
-
-            sender().tell(new SegmentResults(segmentStart, segmentEnd, primes), self());
-        }
+    private void sievingPrimeFoundMsgHandler(SievingPrimeFound message) {
+        log(message);
+        removeMultiples(message.prime);
+        sender().tell(new PrimeMultiplesMarkedOff(message.prime), self());
     }
 
     private void removeMultiples(Integer prime) {

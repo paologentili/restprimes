@@ -1,6 +1,7 @@
 package uk.co.rbs.restprimes.service.primesgenerator.parallel;
 
 import akka.actor.ActorSystem;
+import akka.japi.pf.ReceiveBuilder;
 import org.junit.*;
 import scala.concurrent.Await;
 import scala.concurrent.duration.Duration;
@@ -85,10 +86,7 @@ public class ParallelSievePrimesGeneratorTest {
     public static class MockMasterActor extends ParallelSieveMasterActor {
         public MockMasterActor(WorkerActorRouterFactory workerActorRouter) {
             super(workerActorRouter);
-        }
-        @Override
-        public void onReceive(Object message) throws Exception {
-            sender().tell(message, self());
+            context().become(ReceiveBuilder.matchAny(message -> sender().tell(message, self())).build());
         }
     }
 

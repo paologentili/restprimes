@@ -45,7 +45,7 @@ public class ParallelSieveMasterActorTest {
     @Before
     public void setup() {
 
-        // test subject's mocked dependencies
+        // dependencies
         this.mockMasterActorFactory = mock(ParallelSieveGuiceModule.MasterActorFactory.class);
         this.mockRouterFactory = mock(WorkerActorRouterFactory.class);
         this.mockWorkerPolicy = mock(WorkerPolicy.class);

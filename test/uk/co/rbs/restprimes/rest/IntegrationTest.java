@@ -43,6 +43,7 @@ public class IntegrationTest {
     private static final String NOT_ACCEPTABLE_MEDIA_TYPE = "application/pdf";
 
     private static String primesResponseFor30;
+    private static String primesResponseFor29;
 
     @BeforeClass
     public static void startupTestApp() throws Exception {
@@ -50,6 +51,7 @@ public class IntegrationTest {
         testPlayServer.start();
 
         primesResponseFor30 = om.writeValueAsString(new PrimesResponse(30, Arrays.asList(2, 3, 5, 7, 11, 13, 17, 19, 23, 29)));
+        primesResponseFor29 = om.writeValueAsString(new PrimesResponse(29, Arrays.asList(2, 3, 5, 7, 11, 13, 17, 19, 23, 29)));
     }
 
     @AfterClass
@@ -104,25 +106,25 @@ public class IntegrationTest {
     @Test
     public void testStreaming() throws Exception {
 
-        final WSResponse wsResponse = WS.url(URL_API + "/primes/stream/30")
+        final WSResponse wsResponse = WS.url(URL_API + "/primes/stream/29")
                 .get()
                 .get(RESPONSE_WAIT_TIMEOUT);
 
         assertThat(wsResponse.getStatus(), equalTo(OK));
         assertThat(wsResponse.getHeader(Http.HeaderNames.CONTENT_TYPE), containsString("application/json"));
-        assertThat(wsResponse.getBody(), equalTo(primesResponseFor30));
+        assertThat(wsResponse.getBody(), equalTo(primesResponseFor29));
     }
 
     @Test
     public void indexEndpointShouldReturnPrimeNumbersInJsonForDefaultAlgorithm() throws Exception {
 
-        final WSResponse wsResponse = WS.url(URL_API + "/primes/30")
+        final WSResponse wsResponse = WS.url(URL_API + "/primes/29")
                 .get()
                 .get(RESPONSE_WAIT_TIMEOUT);
 
         assertThat(wsResponse.getStatus(), equalTo(OK));
         assertThat(wsResponse.getHeader(Http.HeaderNames.CONTENT_TYPE), containsString("application/json"));
-        assertThat(wsResponse.getBody(), equalTo(primesResponseFor30));
+        assertThat(wsResponse.getBody(), equalTo(primesResponseFor29));
 
     }
 
